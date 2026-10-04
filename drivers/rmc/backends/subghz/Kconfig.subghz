@@ -1,0 +1,76 @@
+# Copyright (c) 2026 Calixto System Pvt Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+config RMC_SUBGHZ_PAIRING_TIMEOUT_MS
+	int "Pairing window duration (ms)"
+	default 20000
+	depends on RMC_SUBGHZ_BACKEND
+	help
+	  Total time the Sub-GHz backend will transmit beacons and wait for
+	  an Authentication Request from a Shuttle. After this window expires
+	  without completing pairing, a new 5-second window starts (loops
+	  indefinitely until pairing succeeds).
+
+config RMC_SUBGHZ_RETRY_COUNT
+	int "ACK retry count for acknowledged transmissions"
+	default 3
+	depends on RMC_SUBGHZ_BACKEND
+	help
+	  Number of retransmissions after an ACK timeout before giving up
+	  and reporting RMC_ERR_RETRY_LIMIT to the application. Does not
+	  apply to unacknowledged transmissions (msg_type bit7 = 1).
+
+config RMC_SUBGHZ_DEFAULT_TX_TIMEOUT_MS
+	int "Default fsk_send() timeout (ms)"
+	default 500
+	depends on RMC_SUBGHZ_BACKEND
+	help
+	  Timeout passed to fsk_send() for each individual over-the-air
+	  packet transmission (beacon, auth, config, data). Must be long
+	  enough for the packet to be fully transmitted at 38.4 kbps.
+
+config RMC_SUBGHZ_SM_STACK_SIZE
+	int "Sub-GHz state-machine thread stack size (bytes)"
+	default 3072
+	depends on RMC_SUBGHZ_BACKEND
+
+config RMC_SUBGHZ_SM_THREAD_PRIORITY
+	int "Sub-GHz state-machine thread priority"
+	default 7
+	depends on RMC_SUBGHZ_BACKEND
+	help
+	  Must be lower priority (higher number) than ISRs but high enough
+	  to respond to radio events promptly. Default matches the Wi-Fi
+	  state-machine thread priority.
+
+config RMC_SUBGHZ_SM_MSGQ_DEPTH
+	int "Sub-GHz state-machine event queue depth"
+	default 8
+	depends on RMC_SUBGHZ_BACKEND
+	help
+	  Number of events (RX packets, timer ticks, TX requests) that can
+	  be queued for the state-machine thread at once. Increase if log
+	  warnings about queue-full appear.
+
+config RMC_SUBGHZ_DATA_MAX_LEN
+    int "RMC SubGHz maximum data payload length (bytes)"
+    range 1 237
+    default 237
+    help
+      Maximum length of the data payload in a single RMC SubGHz packet.
+      The maximum allowed value is 237 bytes.
+
+config RMC_SUBGHZ_PAIRING_EXCHANGE_TIMEOUT_MS
+    int "Pairing exchange timeout (ms)"
+    default 5000
+    help
+      Time (ms) allowed for the full auth -> pairing success after an
+      auth request is received. If the shuttle does not complete the
+      exchange within this window, RMC_PAIRING_FAILED_TIMEOUT is reported.
+
+config RMC_SUBGHZ_PAIRING_SCAN_RESP_TIMEOUT_MS
+    int "Scanning time extension (ms)"
+    default 20000
+    help
+      Time in milliseconds to extend the timeout for receiving
+      the authentication request.

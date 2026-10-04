@@ -1,0 +1,14 @@
+if DISPLAY
+
+config WAVESHARE_DSI2DPI
+    bool "Waveshare DSI2DPI display bridge driver"
+    default y
+    depends on DT_HAS_WAVESHARE_DSI2DPI_ENABLED
+    select MIPI_DSI
+    select I2C
+    help
+      Enable driver for the Waveshare DSI-to-DPI bridge board.
+      The board uses an ICN6211 DSI-to-RGB bridge controlled over
+      I2C for backlight and enable, with MIPI DSI video input.
+
+endif # DISPLAY

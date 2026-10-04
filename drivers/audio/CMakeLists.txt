@@ -1,0 +1,1 @@
+zephyr_library_sources_ifdef(CONFIG_AUDIO_TLV320AIC3106 tlv320aic3106.c)

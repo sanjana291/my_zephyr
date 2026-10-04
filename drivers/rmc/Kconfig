@@ -1,0 +1,79 @@
+# Copyright (c) 2026 Calixto System Pvt Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig RMC
+	bool "Remote Message Communication (RMC) Driver"
+	help
+	  Enables the RMC driver: a transport-agnostic communication
+	  interface for the application, backed by a WiFi (ESP32-C3) or
+	  SubGHz (FSK) backend selected at RMC_Init() time.
+	  Create a node with compatible "calixto,rmc" in your board
+	  devicetree to enable RMC on a specific instance.
+
+if RMC
+
+config RMC_INIT_PRIORITY
+	int "RMC device driver init priority"
+	default KERNEL_INIT_PRIORITY_DEVICE
+	help
+	  Zephyr device-model init priority for the RMC device itself.
+	  This only sets up internal runtime state - it does not start
+	  any backend. The backend is started explicitly by the
+	  application via RMC_Init().
+
+config RMC_WIFI_BACKEND
+	bool "Enable RMC WiFi (ESP32-C3) backend"
+	default y
+	select JSON_LIBRARY
+	select UART_INTERRUPT_DRIVEN
+	help
+	  Enables the WiFi backend (UART + CHIP_EN GPIO control of an
+	  ESP32-C3 module). This is the only fully implemented backend.
+	  Requires interrupt-driven UART support from the board's UART
+	  driver.
+
+config RMC_SUBGHZ_BACKEND
+    bool "Enable RMC SubGHz (SX127x FSK) backend"
+    default n
+    select SPI
+    select FSK
+    select SX1278
+    help
+      Enables the RMC SubGHz (SX127x FSK) backend.
+
+      Requires a "calixto,sx127x-fsk" device node referenced by the
+      "subghz-radio" property of the "calixto,rmc" Devicetree node.
+
+      The FSK driver owns the SPI bus, RESET GPIO, and DIO0 GPIO
+      resources.
+
+config RMC_SERIAL_BACKEND
+	bool "Enable RMC Serial (RS-485) backend"
+	default n
+	select SERIAL
+	select UART_INTERRUPT_DRIVEN
+	select RS_485
+	help
+	  Enables the Serial backend: RMC over a half-duplex RS-485 link
+	  (the Calixto rs-485 driver handles the DE line). Frames are the
+	  raw application packet wrapped as { <payload> }. Requires an RMC
+	  devicetree node with a "serial-uart" phandle to a "calixto,rs-485"
+	  device.
+
+if RMC_WIFI_BACKEND
+rsource "backends/wifi/Kconfig.wifi"
+endif # RMC_WIFI_BACKEND
+
+if RMC_SUBGHZ_BACKEND
+rsource "backends/subghz/Kconfig.subghz"
+endif # RMC_SUBGHZ_BACKEND
+
+if RMC_SERIAL_BACKEND
+rsource "backends/serial/Kconfig.serial"
+endif # RMC_SERIAL_BACKEND
+
+module = RMC
+module-str = rmc
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # RMC

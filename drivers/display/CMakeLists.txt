@@ -1,0 +1,1 @@
+zephyr_library_sources_ifdef(CONFIG_WAVESHARE_DSI2DPI display_waveshare_dsi2dpi.c)

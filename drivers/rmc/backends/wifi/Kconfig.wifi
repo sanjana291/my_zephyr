@@ -1,0 +1,67 @@
+# Copyright (c) 2026 Calixto System Pvt Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+config RMC_WIFI_CHIP_EN_STARTUP_DELAY_MS
+	int "ESP32-C3 startup delay after CHIP_EN high (ms)"
+	default 500
+	help
+	  Time to wait after driving CHIP_EN high before sending any
+	  WiFi configuration or communication commands, per the RMC
+	  hardware requirements.
+
+config RMC_WIFI_CHIP_EN_RESET_LOW_MS
+	int "ESP32-C3 CHIP_EN low hold time during reset (ms)"
+	default 100
+	help
+	  Time to hold CHIP_EN low during the ESP32-C3 hardware reset
+	  sequence, per the RMC hardware requirements.
+
+config RMC_WIFI_DEFAULT_ACK_RETRY_TIMEOUT_MS
+	int "Default ACK/NACK retry timeout (ms)"
+	default 2000
+	help
+	  Default value for struct rmc_wifi_init_cfg.ack_retry_timeout_ms
+	  if the application does not override it. Governs ACK/NACK
+	  waits, WiFi AP connection retries, and remote TCP connection
+	  retries.
+
+config RMC_WIFI_DEFAULT_ACK_RETRY_COUNT
+	int "Default ACK/NACK retry count"
+	default 3
+	help
+	  Default value for struct rmc_wifi_init_cfg.ack_retry_count if
+	  the application does not override it.
+
+config RMC_WIFI_DEFAULT_HEARTBEAT_TIMEOUT_MS
+	int "Default heartbeat timeout (ms)"
+	default 10000
+	help
+	  Default value for struct rmc_wifi_init_cfg.heartbeat_timeout_ms if
+	  the application does not override it. Independent of the
+	  ACK/NACK retry timeout above.
+
+config RMC_WIFI_THREAD_STACK_SIZE
+	int "RMC WiFi state-machine thread stack size"
+	default 2048
+
+config RMC_WIFI_THREAD_PRIORITY
+	int "RMC WiFi state-machine thread priority"
+	default 7
+	help
+	  Cooperative/preemptive priority (Zephyr convention: lower is
+	  higher priority) for the dedicated thread that runs the WiFi
+	  backend's connection state machine and owns all UART framing
+	  consumption.
+
+config RMC_WIFI_MSGQ_DEPTH
+	int "RMC WiFi state-machine event queue depth"
+	default 4
+	help
+	  Number of in-flight events (RX packets, timer expiries, TX
+	  requests) the state-machine thread can have queued at once.
+
+config RMC_WIFI_DATA_MAX_LEN
+	int "RMC WiFi maximum data payload length (bytes)"
+	default 250
+	help
+	  Maximum length of the data payload in a single RMC WiFi packet.

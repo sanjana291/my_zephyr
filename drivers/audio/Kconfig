@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: Apache-2.0
+
+if AUDIO_CODEC
+
+config AUDIO_TLV320AIC3106
+	bool "TLV320AIC3106 audio codec support"
+	default y
+	depends on DT_HAS_TI_TLV320AIC3106_ENABLED
+	depends on AUDIO_CODEC
+	select I2C
+	help
+	  Enable support for the Texas Instruments TLV320AIC3106 stereo audio
+	  codec (I2C control interface, I2S/LJ/RJ audio interface).
+
+endif

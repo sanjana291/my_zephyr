@@ -1,0 +1,57 @@
+# FSK Radio Subsystem Kconfig
+#
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig FSK
+	bool "FSK Radio Subsystem"
+	help
+	  Enable the FSK/GFSK radio driver subsystem.
+	  This is a standalone subsystem that does NOT depend on the
+	  Zephyr LoRa subsystem or modify any LoRa APIs.
+
+if FSK
+
+# ---------------------------------------------------------------------------
+# Driver
+# ---------------------------------------------------------------------------
+
+config FSK_SX1278
+	bool "Semtech SX1278 FSK/GFSK driver"
+	default y
+	depends on DT_HAS_CALIXTO_SX127X_FSK_ENABLED
+	select SPI
+	select GPIO
+	help
+	  Enable driver for the Semtech SX1278 transceiver operating
+	  in FSK/GFSK packet mode only.  LoRa mode is NOT supported
+	  and the LongRangeMode bit is explicitly cleared on init.
+
+	  Supports:
+	    - FSK and GFSK (Gaussian shaping BT=0.3/0.5/1.0)
+	    - Variable and fixed packet modes
+	    - Hardware CRC (CRC-CCITT)
+	    - Whitening and Manchester DC-free encoding
+	    - Up to 8-byte sync word
+	    - AFC (Automatic Frequency Correction)
+	    - DIO0 interrupt-driven TX/RX with poll fallback
+	    - Blocking fsk_send() / fsk_recv() APIs
+
+config FSK_INIT_PRIORITY
+	int "FSK driver initialisation priority"
+	default KERNEL_INIT_PRIORITY_DEVICE
+	help
+	  Kernel device initialisation priority for FSK drivers.
+	  Must be higher (later) than the SPI bus init priority (default 50).
+
+config FSK_LOG_LEVEL
+	int "FSK driver log level"
+	default 3
+	range 0 4
+	help
+	  Log level for the FSK driver subsystem.
+	    0 = OFF
+	    1 = ERR
+	    2 = WRN
+	    3 = INF  (default)
+	    4 = DBG  (enables full register readback trace after configure)
+endif

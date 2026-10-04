@@ -1,0 +1,17 @@
+# Copyright (c) 2026 Calixto System Pvt Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+config RMC_SERIAL_DATA_MAX_LEN
+	int "RMC Serial maximum data payload length (bytes)"
+	default 64
+	help
+	  Maximum application payload (the bytes between the { } frame
+	  delimiters) in a single RMC Serial frame. Bounds the RX framer
+	  buffer, the notify buffer, and the TX frame buffer.
+
+config RMC_SERIAL_RX_RING_SIZE
+	int "RMC Serial RX ring buffer size (bytes)"
+	default 128
+	help
+	  Size of the ring buffer between the UART RX ISR and the framing
+	  work item.

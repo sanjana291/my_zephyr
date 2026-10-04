@@ -1,0 +1,1 @@
+zephyr_library_sources_ifdef(CONFIG_VIDEO_IMX219 imx219.c)
