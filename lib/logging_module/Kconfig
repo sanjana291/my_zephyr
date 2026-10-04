@@ -1,0 +1,271 @@
+# SD card file-system logging module
+#
+# Copyright (c) 2026 Calixto System
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig SDCARD_LOGGING
+	bool "SD card file-system logging module"
+	depends on FILE_SYSTEM
+	select FAT_FILESYSTEM_ELM
+	select FS_FATFS_LFN
+	select FILE_SYSTEM_MKFS
+	select FS_FATFS_MKFS
+	select RTC
+	select CRC
+	help
+	  Enable the reusable SD card logging library (lib/logging_module).
+	  Provides SD card / FAT32 detection, mounting and formatting,
+	  log file creation and rotation, buffered writes, sequential
+	  reads, free-space based cleanup, and a persisted config file
+	  so logging state survives a reset or power cycle.
+
+	  NOTE: DISK_ACCESS is intentionally not listed as a "depends on"
+	  here - FAT_FILESYSTEM_ELM (select'ed above) already selects
+	  DISK_ACCESS itself. Adding an explicit "depends on DISK_ACCESS"
+	  on top of that creates a circular reverse-dependency (DISK_ACCESS
+	  is only turned on BY selecting FAT_FILESYSTEM_ELM/USB MSC, so
+	  requiring it as a pre-existing dependency of the very option that
+	  selects FAT_FILESYSTEM_ELM is a chicken-and-egg loop). Your board
+	  still needs a working disk driver (e.g. CONFIG_DISK_DRIVERS,
+	  CONFIG_SDHC, CONFIG_IMX_USDHC) enabled in prj.conf as before -
+	  that requirement hasn't changed, it's just no longer expressed
+	  as a Kconfig "depends on" here.
+
+	  This also selects FS_FATFS_LFN because log file names
+	  ("<prefix>_<number>_<timestamp>") exceed 8.3 short-name
+	  limits. It also selects RTC: your board devicetree must
+	  provide an "rtc" alias (aliases { rtc = &<node>; };) pointing
+	  at a real RTC device, and you likely need to also enable your
+	  SoC's specific RTC driver Kconfig. See
+	  lib/logging_module/README.md for details.
+
+	  NOTE: this module formats a blank/corrupted card itself
+	  (via FILE_SYSTEM_MKFS + FS_FATFS_MKFS, selected above), using
+	  FM_FAT32 - a normal MBR-partitioned FAT32 volume - rather
+	  than Zephyr's built-in CONFIG_FS_FATFS_MOUNT_MKFS
+	  auto-format-on-mount, which is hardcoded to FM_ANY | FM_SFD
+	  ("superfloppy", no partition table). An SFD-formatted card
+	  mounts and works fine in firmware but many SD card
+	  readers/OSes (Windows especially) will not show it as a
+	  normal drive. Do NOT also enable CONFIG_FS_FATFS_MOUNT_MKFS
+	  yourself - if it runs first, it will silently reformat the
+	  card as SFD before this module ever gets a chance to.
+
+if SDCARD_LOGGING
+
+module = SDLOG
+module-str = SD card logging
+source "subsys/logging/Kconfig.template.log_config"
+
+config SDLOG_MOUNT_POINT
+	string "SD card FAT32 mount point"
+	default "/SD:"
+	help
+	  Must match a volume string your FatFs configuration accepts
+	  (see _VOLUME_STRS in ffconf.h) and the mount point used
+	  elsewhere in your application if it also touches the card.
+
+config SDLOG_DISK_NAME
+	string "Disk access driver name"
+	default "SD"
+	help
+	  Name passed to disk_access_ioctl()/disk_access_init(); must
+	  match the disk name registered by your board's SD/MMC disk
+	  driver.
+
+config SDLOG_CONFIG_FILE_NAME
+	string "Logging state config file name"
+	default "ws-config.csv"
+	help
+	  Fixed name (no timestamp) so the module can always find its
+	  persisted state after a reset or power cycle. NOTE: despite
+	  the .csv extension (kept for consistency with the log data
+	  files), this file's CONTENT remains an internal binary
+	  struct (magic/version/CRC/state) - it is not meant to be
+	  human-readable, and is not affected by the CSV line format
+	  used for log data entries.
+
+config SDLOG_FILE_PREFIX
+	string "Log file name prefix"
+	default "ws-datalog"
+	help
+	  Log files are named "<prefix>_<5-digit file number>_<14-digit
+	  timestamp>", e.g. ws-datalog_00001_20260824153045.
+
+config SDLOG_MAX_ENTRIES_PER_FILE
+	int "Max log entries per file before rotation"
+	default 100
+	help
+	  LOG-WR-06: once the active log file holds this many entries,
+	  it is closed and a new log file is created.
+
+config SDLOG_CLEANUP_THRESHOLD_PERCENT
+	int "SD card usage percent that triggers cleanup"
+	default 90
+	range 1 100
+	help
+	  LOG-CLR-02: once SD card usage reaches this percentage, the
+	  oldest log file is deleted to free space (the currently
+	  active write file is never deleted).
+
+config SDLOG_MAX_FILE_NUMBER
+	int "Maximum <File Number> value before it wraps"
+	default 9999
+	help
+	  The file-number counter increments from 0 up to this value
+	  then wraps back to 0, reusing a number only once the file
+	  that previously used it has been deleted.
+
+config SDLOG_MAX_ENTRY_SIZE
+	int "Maximum size in bytes of a single log entry"
+	default 512
+	help
+	  Upper bound on the length passed to sdlog_write(). Entries
+	  larger than this are rejected with -EINVAL.
+
+config SDLOG_MAX_FILES_SCAN
+	int "Max log files tracked in one directory scan"
+	default 64
+	help
+	  Static array size used whenever the module scans the mount
+	  point for existing log files (config rebuild, cleanup, and
+	  read file hand-off, and the file-count/date-range/listing
+	  APIs). Increase if more than this many log files may exist
+	  on the card at once.
+
+config SDLOG_MAX_OPEN_RANDOM_FILES
+	int "Max simultaneously open random-access (TFTP-style) files"
+	default 2
+	help
+	  Number of concurrent sdlog_file_open() handles supported.
+	  Each is independent of the Modem's sequential read cursor
+	  and of every other open handle. A single TFTP transfer only
+	  needs one; the default of 2 gives a little headroom.
+
+config SDLOG_DEBUG_HELPERS
+	bool "Enable debug-only helper functions (sdlog_force_reformat)"
+	default n
+	help
+	  Builds lib/logging_module/sdlog_debug.c, which exposes
+	  sdlog_force_reformat() via
+	  <logging_module/logging_module_debug.h> (a SEPARATE header
+	  from the normal public API - it is not included by
+	  logging_module.h).
+
+	  sdlog_force_reformat() unconditionally erases and
+	  reformats the SD card as MBR-partitioned FAT32, regardless
+	  of whether it currently mounts successfully. This is
+	  DESTRUCTIVE - all existing log files are lost - and exists
+	  only so you can force a real MBR-partitioned format from
+	  firmware when a PC's SD card reader/OS tooling (e.g.
+	  Windows diskpart) can't reliably wipe the card itself.
+	  Call it once from application code, confirm the result,
+	  then disable this option again - it is not meant to be
+	  left enabled or called routinely.
+
+# ------------------------------------------------------------------
+# TCP server + TFTP client integration (Logging Workflow)
+# ------------------------------------------------------------------
+
+menuconfig SDLOG_TCP_SERVER
+	bool "Integrated TCP server and TFTP client (Logging Workflow)"
+	depends on NETWORKING
+	select NET_TCP
+	select NET_SOCKETS
+	select NET_UDP
+	select TFTP_LIB
+	help
+	  Builds the TCP server (sdlog_tcp.c) and TFTP client
+	  (sdlog_tftp.c) directly into the sdlog module.
+
+	  On power-on (SDLOG_Init()), a TCP server thread starts
+	  automatically on the configured port.  The application is
+	  NEVER notified when a connection request arrives.
+
+	  Only the configured static client IP may connect.  After
+	  the mandatory Security Sequence (MTP 02) handshake the
+	  module handles:
+
+	    MTP 07  - Log Files Information Request  → MTP 08 response
+	    MTP 09  - Log Read Request               → MTP 10 availability
+	                                               MTP 11 transfer status
+	                                               TFTP file transfer
+	                                               MTP 12 result
+
+	  The TFTP client sends each matched log file to the configured
+	  TFTP server.  If any error occurs during the transfer, MTP 12
+	  with STS=1 (fail) and the failing file number is sent back to
+	  the TCP client before moving to the next file.
+
+if SDLOG_TCP_SERVER
+
+config SDLOG_TCP_PORT
+	int "TCP port the logging server listens on"
+	default 5000
+	help
+	  The Whizz Studio connects to this port to issue log file
+	  requests.
+
+config SDLOG_TCP_ALLOWED_CLIENT_IP
+	string "IPv4 address of the only permitted TCP client"
+	default "192.168.1.15"
+	help
+	  Connection requests from any other source address are
+	  rejected immediately after accept(), before the Security
+	  Sequence phase.  The application is not notified.
+
+config SDLOG_TCP_HANDSHAKE_SEQ
+	string "Expected Security Sequence string (SEQ field value)"
+	default "-@#$Whizz-Embedded-Controller-Configuration$#@-"
+	help
+	  The value that must appear in the "SEQ" field of the
+	  client's MTP 02 Security Sequence packet.  Must match
+	  byte-for-byte.  On mismatch the connection is closed with
+	  no ACK.
+
+config SDLOG_TCP_HANDSHAKE_TIMEOUT_MS
+	int "Milliseconds to wait for the Security Sequence packet"
+	default 5000
+	help
+	  Measured from the instant the TCP connection is accepted.
+	  If the complete {"MTP":"02","SEQ":"..."} packet is not
+	  received within this window the connection is terminated.
+
+config SDLOG_TCP_THREAD_STACK_SIZE
+	int "TCP server thread stack size (bytes)"
+	default 4096
+
+config SDLOG_TCP_THREAD_PRIORITY
+	int "TCP server thread priority"
+	default 5
+
+# ------------------------------------------------------------------
+# TFTP client parameters
+# ------------------------------------------------------------------
+
+config SDLOG_TFTP_SERVER_IP
+	string "IP address of the TFTP server to upload log files to"
+	default "192.168.1.15"
+	help
+	  The TFTP server that receives the log files transferred in
+	  response to a Log Read Request (MTP 09).  This is typically
+	  the same machine as the Whizz Studio TCP client.
+
+config SDLOG_TFTP_SERVER_PORT_STR
+	string "TFTP server port (as a string for getaddrinfo)"
+	default "69"
+	help
+	  Standard TFTP port is 69.  Stored as a string because
+	  Zephyr's getaddrinfo() takes a service string.
+
+config SDLOG_TFTP_MAX_FILE_SIZE
+	int "Maximum log file size (bytes) that the TFTP client can send"
+	default 65536
+	help
+	  A static buffer of this size is allocated in sdlog_tftp.c.
+	  Log files larger than this will fail with MTP 12 STS=1.
+	  Increase this value if your log files can exceed 64 KiB.
+
+endif # SDLOG_TCP_SERVER
+
+endif # SDCARD_LOGGING

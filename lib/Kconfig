@@ -1,0 +1,5 @@
+rsource "iol-master/Kconfig"
+rsource "tcp_server/Kconfig"
+rsource "config_module/Kconfig"
+rsource "storage_module/Kconfig"
+rsource "logging_module/Kconfig"

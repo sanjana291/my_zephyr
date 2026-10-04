@@ -1,0 +1,108 @@
+menuconfig TCP_SERVER
+	bool "TCP server library (single client, handshake + JSON validation)"
+	depends on NETWORKING
+	select NET_TCP
+	select NET_SOCKETS
+	select CJSON_LIB
+	help
+	  Out-of-tree TCP server, based on the Zephyr echo sample, that
+	  accepts one client at a time from a single allow-listed IP,
+	  requires a Security Sequence handshake before allowing
+	  application data, monitors the session with TCP keepalive, and
+	  validates every inbound packet as JSON before handing it to the
+	  application.
+
+if TCP_SERVER
+
+config TCP_SERVER_PORT
+	int "TCP port to listen on"
+	default 5000
+	help
+	  Whizz controller requirement: TCP server listens on port 5000.
+
+config TCP_SERVER_THREAD_STACK_SIZE
+	int "Server thread stack size"
+	default 4096
+
+config TCP_SERVER_THREAD_PRIORITY
+	int "Server thread priority"
+	default 5
+
+config TCP_SERVER_ALLOWED_CLIENT_IP
+	string "Only IPv4 address the server will accept connections from"
+	default "192.168.1.15"
+	help
+	  Connection requests from any other source address are rejected
+	  immediately after accept(), before the handshake phase.
+
+config TCP_SERVER_HANDSHAKE_TIMEOUT_MS
+	int "Milliseconds to wait for the Security Sequence packet"
+	default 500
+	help
+	  Measured from the instant the TCP connection is accepted. If the
+	  complete {"MTP":"02","SEQ":"..."} packet is not received within
+	  this window, the connection is terminated (no ACK/NACK is sent,
+	  since nothing coherent was ever received to respond to).
+
+config TCP_SERVER_HANDSHAKE_DEFAULT
+	string "Default Security Sequence (used if none given at init)"
+	default "-@#$Whizz-Embedded-Controller-Configuration$#@-"
+	help
+	  Expected value of the "SEQ" field in the client's handshake
+	  packet, {"MTP":"02","SEQ":"<this string>"}. Must match
+	  byte-for-byte (including length) or an NACK is sent and the
+	  connection is terminated. This is a fixed shared secret, not a
+	  challenge-response scheme - treat it accordingly.
+
+config TCP_SERVER_KEEPALIVE_IDLE_SEC
+	int "Seconds of idleness before the first keepalive probe"
+	default 5
+	help
+	  Applied to the client socket only after the Security Sequence
+	  has been validated successfully (TCP_KEEPIDLE).
+
+config TCP_SERVER_KEEPALIVE_INTERVAL_SEC
+	int "Seconds between unacknowledged keepalive probes"
+	default 2
+	help
+	  TCP_KEEPINTVL for the active client connection.
+
+config TCP_SERVER_KEEPALIVE_COUNT
+	int "Unanswered keepalive probes before the connection is dropped"
+	default 3
+	help
+	  TCP_KEEPCNT for the active client connection. When this many
+	  consecutive probes go unanswered the connection is considered
+	  lost, closed, and the server returns to listening.
+
+config TCP_SERVER_MAX_FRAME_SIZE
+	int "Maximum size (bytes) of a single JSON frame"
+	default 1024
+	help
+	  Frame boundaries are structural (brace/bracket depth returning to
+	  zero), not a delimiter - no newline is required or assumed
+	  between packets. A frame (including any partial data buffered
+	  while waiting for its closing brace) larger than this is treated
+	  as invalid and the client is disconnected.
+
+	  Also used by config_manager as its response-building buffer
+	  size, so it must be large enough for the biggest Read
+	  Configuration Response you register: section 'M' has 12 fields,
+	  so a worst case of every field at CONFIG_MANAGER_FIELD_VALUE_MAX
+	  bytes needs roughly 12 * (CONFIG_MANAGER_FIELD_VALUE_MAX + 10)
+	  bytes plus a small header - the default here has headroom for
+	  that with the default CONFIG_MANAGER_FIELD_VALUE_MAX=64.
+
+config TCP_SERVER_ALLOW_ARRAY_ROOT
+	bool "Accept JSON arrays as well as JSON objects at the frame root"
+	default n
+	help
+	  If disabled (default), only a top-level JSON object ('{...}')
+	  passes validation; arrays or bare scalars are rejected as an
+	  invalid packet.
+
+module = TCP_SERVER
+module-str = TCP server library
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # TCP_SERVER

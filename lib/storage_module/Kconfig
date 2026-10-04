@@ -1,0 +1,16 @@
+menuconfig STORAGE_MODULE
+    bool "Storage module (nvs)"
+    select EEPROM
+    select CRC
+	select I2C
+	help
+	  Requires a devicetree 'eeprom-0' alias pointing at your EEPROM
+	  chip's node.
+
+if STORAGE_MODULE
+
+module = STORAGE_MODULE
+module-str = Storage Module Library
+source "subsys/logging/Kconfig.template.log_config"
+
+endif #STORAGE_MODULE

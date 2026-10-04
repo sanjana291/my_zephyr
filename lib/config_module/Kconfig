@@ -1,0 +1,42 @@
+menuconfig CONFIG_MODULE
+	bool "Whizz Studio Configuration Module"
+	depends on TCP_SERVER
+	select JSON_LIBRARY
+	select RTC
+	select I2C
+	help
+	  High-level configuration protocol handler that sits on top of the
+	  tcp_server library. Owns the full TCP configuration flow: connection
+	  timer, JSON packet decode/encode for MTP 03/04/05/06, field range
+	  validation, and the application-facing CFG_Init / CFG_Resp / callback
+	  API. The application never calls tcp_server functions directly.
+
+if CONFIG_MODULE
+
+config CFG_MODULE_CONN_TIMEOUT_MS
+	int "Connection session timeout in milliseconds"
+	default 30000
+	help
+	  After a client successfully completes the Security Sequence
+	  handshake, a countdown timer starts. If no JSON packet is received
+	  within this window, the Configuration Module forcibly disconnects
+	  the client and fires CFG_EVT_CONN_TIMEOUT.
+	  Set to 0 to disable the connection timer entirely (not recommended
+	  for production use - use keepalive alone in that case).
+	  The final value is not fixed; adjust via Kconfig overlay.
+
+config CFG_MODULE_TX_BUF_SIZE
+	int "Transmit JSON buffer size in bytes"
+	default 512
+	help
+	  Size of the stack-local buffer used to build outbound JSON packets
+	  (MTP 04 Read Response and MTP 01 ACK/NACK). Must be large enough
+	  for the biggest response you expect (section M with all string fields
+	  at maximum length is roughly 200 bytes; 512 gives comfortable margin).
+	  Must not exceed CONFIG_TCP_SERVER_MAX_FRAME_SIZE.
+
+module = CONFIG_MODULE
+module-str = Configuration Module
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # CONFIG_MODULE

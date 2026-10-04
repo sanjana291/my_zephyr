@@ -1,0 +1,5 @@
+add_subdirectory_ifdef(CONFIG_IOL_MASTER iol-master)
+add_subdirectory_ifdef(CONFIG_TCP_SERVER tcp_server)
+add_subdirectory_ifdef(CONFIG_CONFIG_MODULE config_module)
+add_subdirectory_ifdef(CONFIG_STORAGE_MODULE storage_module)
+add_subdirectory_ifdef(CONFIG_SDCARD_LOGGING logging_module)
