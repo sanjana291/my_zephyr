@@ -1,0 +1,28 @@
+description: |
+  Calixto RMC Wi-Fi backend (ESP32-C3 co-processor over UART).
+
+  Implements the "PKT i.MXRT - ESP32-C3" protocol: chip-enable GPIO,
+  Wi-Fi configuration, ACK/NACK, Wi-Fi/TCP connection status, heartbeat
+  supervision and TX/RX data packets.
+
+compatible: "calixto,rmc-wifi"
+
+include: base.yaml
+
+properties:
+  uart:
+    type: phandle
+    required: true
+    description: UART device connected to the ESP32-C3 module.
+
+  enable-gpios:
+    type: phandle-array
+    required: true
+    description: Chip-enable GPIO toggled to power up/down the ESP32-C3.
+
+  heartbeat-timeout-ms:
+    type: int
+    default: 5000
+    description: |
+      Maximum time without a heartbeat from the ESP32-C3 before the
+      backend reports RMC_EVENT_LINK_ERROR to the application.

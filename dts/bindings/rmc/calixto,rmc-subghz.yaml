@@ -1,0 +1,30 @@
+description: |
+  Calixto RMC SubGHz (SX1276, FSK mode) backend.
+
+  Reserved for the future SubGHz transport. The node and binding exist
+  today so devicetree overlays can be prepared in advance; the backend
+  driver itself (rmc_subghz.c) currently only implements the interface
+  template and returns -ENOTSUP for every operation.
+
+compatible: "calixto,rmc-subghz"
+
+include: base.yaml
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to the NRESET pin of the SX1278 (active low).
+      The driver will toggle this pin during initialisation.
+
+  dio0-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to DIO0 of the SX1278 (active high, rising edge).
+      In FSK packet mode this pin signals:
+        - TX: PacketSent
+        - RX: PayloadReady
+      The driver programs DIO_MAPPING1 bits [7:6] = 00 for both cases,
+      which gives PacketSent in TX and PayloadReady in RX.

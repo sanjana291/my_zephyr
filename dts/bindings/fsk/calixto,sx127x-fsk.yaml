@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Semtech SX1276/SX1278 transceiver (RA-02 module) in FSK/GFSK mode.
+
+compatible: "calixto,sx127x-fsk"
+
+include: spi-device.yaml
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to the NRESET pin of the SX1278 (active low).
+      The driver will toggle this pin during initialisation.
+
+  dio0-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to DIO0 of the SX1278 (active high, rising edge).
+      In FSK packet mode this pin signals:
+        - TX: PacketSent
+        - RX: PayloadReady
+      The driver programs DIO_MAPPING1 bits [7:6] = 00 for both cases,
+      which gives PacketSent in TX and PayloadReady in RX.

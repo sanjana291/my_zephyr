@@ -1,0 +1,22 @@
+compatible: "calixto,rmc"
+
+include: base.yaml
+
+description: Calixto Remote Message Communication driver
+
+properties:
+  wifi-uart:
+    type: phandle
+    required: false
+    description: UART connected to WiFi module
+
+  wifi-enable-gpios:
+    type: phandle-array
+    required: false
+    description: Enable GPIO for WiFi module
+
+  subghz:
+    type: phandle
+    required: false
+    description: >
+      SubGHz radio device (e.g. SX1276).

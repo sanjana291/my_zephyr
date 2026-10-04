@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Texas Instruments TLV320AIC3106 low-power stereo audio codec.
+
+  The codec is controlled over I2C (SELECT pin tied low). The 7-bit address is
+  0b00110xx, where xx = MFP1:MFP0, i.e. 0x18, 0x19, 0x1A or 0x1B.
+
+  Example:
+
+    &lpi2c5 {
+        codec: tlv320aic3106@18 {
+            compatible = "ti,tlv320aic3106";
+            reg = <0x18>;
+            reset-gpios = <&gpio9 3 GPIO_ACTIVE_LOW>;
+            ti,output-select = "both";
+            ti,input-select = "line1";
+        };
+    };
+
+compatible: "ti,tlv320aic3106"
+
+include: i2c-device.yaml
+
+properties:
+  reset-gpios:
+    type: phandle-array
+    description: |
+      Codec RESET pin. The pin is active low, so describe it with
+      GPIO_ACTIVE_LOW; the driver then treats "active" as "held in reset".
+      The datasheet requires a hardware reset after power-up.
+
+  ti,output-select:
+    type: string
+    default: "both"
+    enum:
+      - "headphone"
+      - "lineout"
+      - "both"
+    description: |
+      Which analog output drivers the DAC is routed to and powered for.
+        "headphone" - HPLOUT / HPROUT
+        "lineout"   - LEFT_LOP/M / RIGHT_LOP/M
+        "both"      - all four
+      Select only what is wired on the board to save power.
+
+  ti,input-select:
+    type: string
+    default: "line1"
+    enum:
+      - "line1"
+      - "line2"
+      - "mic3"
+    description: |
+      Analog input routed to the ADCs (single-ended, 0 dB input level).
+        "line1" - LINE1L -> left ADC, LINE1R -> right ADC
+        "line2" - LINE2L -> left ADC, LINE2R -> right ADC
+        "mic3"  - MIC3L  -> left ADC, MIC3R  -> right ADC
+
+  ti,micbias:
+    type: int
+    default: 0
+    enum: [0, 1, 2, 3]
+    description: |
+      MICBIAS output (Page 0, register 25, bits D7-D6).
+        0: powered down   1: 2.0 V   2: 2.5 V   3: connected to AVDD
+
+  ti,output-cm:
+    type: int
+    default: 0
+    enum: [0, 1, 2, 3]
+    description: |
+      Output common-mode voltage (Page 0, register 40, bits D7-D6).
+        0: 1.35 V (reset default)   1: 1.5 V   2: 1.65 V   3: 1.8 V
+
+  ti,hp-ac-coupled:
+    type: boolean
+    description: |
+      Set when the headphone outputs use AC-coupling capacitors. When absent
+      the outputs are programmed for a capless configuration (Page 0,
+      register 14, bit D7). Only bit D7 is programmed; a capless wiring may
+      additionally require HPLCOM/HPRCOM settings that this driver does not
+      touch.
